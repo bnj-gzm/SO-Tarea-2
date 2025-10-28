@@ -1,70 +1,128 @@
-# [cite\_start]Tarea N° 2: Simulación Concurrente (Sistemas Operativos) [cite: 2]
+# Chat por Pipes (C++/UNIX)
 
-[cite\_start]Este proyecto es una simulación sincronizada a menor escala del videojuego clásico Doom, desarrollada para el curso de Sistemas Operativos[cite: 2, 6]. [cite\_start]La simulación maneja 1 Héroe y M Monstruos, donde cada entidad activa se ejecuta en su propio hilo (thread), gestionando sus acciones de movimiento y combate de forma concurrente[cite: 26, 33].
+Este proyecto, correspondiente a la Tarea N° 2 de Sistemas Operativos de la Universidad Diego Portales , implementa una simulación sincronizada basada en el clásico videojuego Doom.
 
-## Requisitos
+El desarrollo se centra en la simulación de entidades concurrentes (Héroes y Monstruos) que interactúan en un grid 2D. Cada entidad es gestionada por un hilo (thread) independiente, y sus interacciones (movimiento, detección, alerta y combate) están controladas mediante herramientas de sincronización para evitar condiciones de carrera y deadlocks.
 
-[cite\_start]El programa está desarrollado en C++11 y debe ser compilado y ejecutado en un *ambiente UNIX* (como Ubuntu), lo cual es un requisito indispensable de la tarea[cite: 70].
+La simulación se inicializa a partir de un archivo de configuración que define el tamaño del mapa, las estadísticas y rutas del héroe , y las propiedades y posiciones de los monstruos.
 
-  * g++ (con soporte para C++11)
-  * make
-  * pthread (para la compilación de hilos)
+## Tabla de contenido
 
-## Compilación
+- [Información general](#información-general)
+- [Tecnologías utilizadas](#tecnologías-utilizadas)
+- [Características](#características)
+- [Configuración](#configuración)
+- [Pruebas realizadas](#pruebas-realizadas)
+- [Resultados](#resultados)
+- [Contacto](#contacto)
 
-[cite\_start]El proyecto incluye un Makefile que facilita la compilación[cite: 68]. Para compilar el programa, simplemente ejecuta el siguiente comando en la terminal, dentro de la carpeta del proyecto:
+---
 
-bash
-make
+## Información general
 
-
-Esto generará un archivo ejecutable llamado simulador.
-
-Para limpiar los archivos generados (borrar el ejecutable), puedes usar:
-
-bash
-make clean
+El sistema implementa una simulación multi-hilo en un entorno UNIX. Está conformado por los siguientes componentes principales:
 
 
-## Ejecución
-
-[cite\_start]Para ejecutar la simulación, debes pasarle como argumento la ruta al archivo de configuración[cite: 28, 67], como se muestra a continuación:
-
-bash
-./simulador config.txt
+Héroe(s): Uno o más hilos (N threads)  que representan a los personajes principales. Cada héroe sigue una ruta predefinida en el grid y ataca a los monstruos que entran en su rango de ataque.
 
 
-Si deseas compilar y ejecutar en un solo paso (como se definió en el Makefile), puedes usar:
+Monstruos: M hilos (M threads)  que representan a los enemigos. Inicialmente están en estado pasivo.
 
-bash
-make run
+Lógica de Simulación:
+
+Cuando un héroe entra en el VISION_RANGE de un monstruo, este se activa.
+
+El monstruo activado alerta a todos los otros monstruos dentro de su propio rango de visión.
+
+Todos los monstruos alertados comienzan a moverse hacia el héroe, siguiendo la ruta más corta (Distancia de Manhattan).
+
+El héroe deja de moverse y entra en combate cuando hay monstruos en su rango de ataque. No reanuda su ruta hasta matar a todos los monstruos cercanos o morir.
+
+La simulación finaliza cuando el héroe muere, llega al final de su ruta, o todos los monstruos son eliminados.
+---
+
+## Tecnologías utilizadas
+
+- Entorno UNIX (Requisito obligatorio) 
+- C++ (g++)
+- make (Para la compilación) 
+- pthreads (Para la gestión de hilos de héroes y monstruos) 
+- Herramientas de Sincronización (Mutexes, Semáforos, etc., para proteger el acceso a variables globales como el grid, HP de las entidades, etc.)
+
+---
+
+##  Características
+
+- Simulación Concurrente: Soporta N héroes y M monstruos, cada uno ejecutándose en su propio hilo.
+- Parseo de Configuración: Lee y configura la simulación completa desde un archivo de texto de entrada.
+- Movimiento por Ruta: El héroe sigue una secuencia de coordenadas (x,y) predefinida.
+- Sistema de Combate: Héroes y monstruos tienen HP, ATTACK_DAMAGE y ATTACK_RANGE para gestionar el combate.
+- IA de Monstruos (Visión y Alerta): Los monstruos tienen un VISION_RANGE que, al activarse, provoca una alerta en cadena a otros monstruos cercanos.
+- Pathfinding de Monstruos: Los monstruos usan la Distancia de Manhattan para calcular la ruta más corta hacia el héroe una vez alertados.
+- Gestión de Sincronización: Implementa mecanismos de exclusión mutua para evitar deadlocks, livelocks y condiciones de carrera en variables compartidas.
+- Extensible: La simulación base de 1 héroe y M monstruos se extiende para soportar N héroes con rutas independientes.
+---
 
 
-## Explicación de Funcionamiento
+## Configuración
 
-[cite\_start]Esta sección explica brevemente cómo funciona internamente el código, cumpliendo con el requisito de la tarea[cite: 67].
+### 1) Requisitos
 
-### Concurrencia (Threads)
+Se requiere un entorno UNIX (como Ubuntu) con las herramientas de compilación básicas.
+```
+### 2) Crear la carpeta del proyector
+```bash
+mkdir -p ~/chat_udp
+cd ~/chat_udp
+```
+### 2) Crear los archivos del proyecto
+Cree una carpeta para el proyecto y coloque allí sus archivos fuente.
+Todos los códigos de este proyecto se pueden encontrar al final en [Códigos](#códigos).
 
-  * [cite\_start]Cada entidad activa (1 Héroe y M Monstruos) se ejecuta en su propio hilo (std::thread)[cite: 26, 33].
-  * Esto permite que todas las entidades "piensen" y actúen de forma concurrente, en lugar de esperar a que termine el turno del anterior.
-  * El hilo principal (main) se encarga de lanzar todos los hilos y luego esperar a que terminen usando thread::join().
 
-### Sincronización (Mutex y Condition Variable)
+### 3) Crear archivo de configuración
+Cree un archivo de configuración de prueba (ej. config.txt) basado en el ejemplo .
 
-Para evitar condiciones de carrera (race conditions) —por ejemplo, que dos monstruos ataquen al héroe exactamente al mismo tiempo y corrompan su HP— se utiliza un sistema de sincronización:
+Pega el siguiente contenido (o el tuyo):
 
-1.  **std::mutex (Candado):** Se usa un único candado global (sim_mutex). Cualquier hilo (Héroe o Monstruo) debe tomar este candado antes de leer o modificar cualquier dato compartido (el HP del héroe, la posición de un monstruo, etc.). Esto asegura que solo una entidad pueda alterar el estado del juego a la vez.
+### 4) Compilar
 
-2.  **std::condition_variable (Campana):** Para evitar el busy-waiting (gastar CPU en un bucle while(true)), se implementa un sistema de turnos:
+Si su Makefile está configurado correctamente, la compilación es simple.
 
-      * [cite\_start]El Héroe toma el candado, realiza su acción (atacar o moverse) y libera el candado[cite: 25].
-      * Al terminar, el Héroe "despierta" a todos los monstruos usando sim_cv.notify_all().
-      * Los hilos de los Monstruos pasan la mayor parte del tiempo "dormidos" (sim_cv.wait(lock)). Solo despiertan cuando el Héroe los notifica.
-      * [cite\_start]Al despertar, cada monstruo (uno por uno, gracias al mutex) realiza su lógica (ver, alertar, moverse o atacar) [cite: 21, 27] y vuelve a dormir, esperando la siguiente señal del Héroe.
+Se creará el binario:
 
-Este modelo asegura un orden lógico (Héroe actúa, luego Monstruos reaccionan) y es extremadamente eficiente, ya que los hilos no consumen CPU mientras esperan su turno.
+- doom_sim (o el nombre que definas en tu Makefile)
 
-## Autores
 
-[cite\_start](La tarea se puede desarrollar individual o en parejas [cite: 66])
+
+
+### 5) Ejecutar
+El programa debe recibir el archivo de configuración como argumento.
+
+
+##  Pruebas Realizadas
+Se deben realizar pruebas que validen:
+- La correcta lectura de distintas configuraciones.
+- El movimiento del héroe por la ruta especificada.
+- La activación y persecución de los monstruos cuando el héroe entra en rango.
+- La correcta ejecución del combate (reducción de HP, muerte de entidades).
+- El funcionamiento de la alerta en cadena.
+- La ejecución correcta con N héroes y M monstruos sin deadlocks.
+
+Mensaje cliente 1: 
+![Texto alternativo](cliente1enviandomensaje.png)
+
+
+
+## Resultados
+
+- El sistema funciona en Linux/WSL sin errores de ENXIO.
+
+- Se logró comunicación estable, duplicación de procesos y expulsión por reportes.
+
+
+## Contacto
+
+Creado por:
+- Benjamín Guzmán
+- Martin Huiriqueo
