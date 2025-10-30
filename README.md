@@ -108,7 +108,7 @@ La terminal se limpiará y mostrará la simulación gráfica. Presione 'q' en cu
 - La correcta visualización y actualización de la UI de ncurses.
 
 Mensaje cliente 1: 
-![Demo de la Simulación](Prueba.gif)
+![Simulación en acción](Prueba.gif)
 
 
 
