@@ -80,17 +80,19 @@ Cree una carpeta para el proyecto y coloque los 3 archivos (Makefile, config.txt
 
 ### 3) Compilar
 Con los 3 archivos en la misma carpeta, ejecute make para compilar.
-
-# 1. Compilar el proyecto
+```bash
+# Compilar el proyecto
 make
 Esto utilizará el Makefile para compilar main.cpp y creará el ejecutable simulador_visual_N, enlazando las librerías pthread y ncurses.
-
+```
 
 ### 4) Ejecutar
 
 El programa recibe el archivo de configuración como argumento.
-# 2. Ejecutar la simulación
+```bash
+# Ejecutar la simulación
 ./simulador_visual_N config.txt
+```
 La terminal se limpiará y mostrará la simulación gráfica. Presione 'q' en cualquier momento para salir.
 
 
