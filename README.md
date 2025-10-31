@@ -123,11 +123,11 @@ Un panel de UI adjunto muestra el estado (HP actual/máximo y última acción) d
 - config.txt (ejemplo de formato)
 ```bash
 GRID_SIZE 30 20  
-HERO_HP 150  
-HERO_ATTACK_DAMAGE 20  
-HERO_ATTACK_RANGE 3  
-HERO_START 2 2  
-HERO_PATH (3,2) (4,2) (5,2) (5,3) (5,4) (6,4)  
+HERO_1_HP 150  
+HERO_1_ATTACK_DAMAGE 20  
+HERO_1_ATTACK_RANGE 3  
+HERO_1_START 2 2  
+HERO_1_PATH (3,2) (4,2) (5,2) (5,3) (5,4) (6,4)  
 MONSTER_COUNT 3  
 MONSTER_1_HP 50  
 MONSTER_1_ATTACK_DAMAGE 10  
