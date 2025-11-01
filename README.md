@@ -107,7 +107,7 @@ La terminal se limpiará y mostrará la simulación gráfica. Presione 'q' en cu
 - La ejecución correcta con N héroes y M monstruos sin deadlocks.
 - La correcta visualización y actualización de la UI de ncurses.
 
-Mensaje cliente 1: 
+Prueba: 
 ![Simulación en acción](Prueba.gif)
 
 
