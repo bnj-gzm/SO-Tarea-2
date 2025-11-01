@@ -40,7 +40,7 @@ Lógica de Simulación:
 ## Tecnologías utilizadas
 
 - Entorno UNIX (Requisito obligatorio)
-- C++11 (g++)
+- C++17 (g++)
 - make (Para la compilación)
 - pthreads (std::thread) (Para la gestión de N+M+1 hilos)
 - Herramientas de Sincronización (std::mutex, std::condition_variable)
