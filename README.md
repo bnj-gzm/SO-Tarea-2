@@ -191,9 +191,6 @@ struct SimulationConfig {
     std::vector<MonsterConfig> monsters;
 };
 
-// ===================================================================
-// FUNCIÓN parseConfig (CORREGIDA para multi-línea)
-// ===================================================================
 SimulationConfig parseConfig(const std::string& filename) {
     SimulationConfig config;
     std::ifstream file(filename);
@@ -246,10 +243,6 @@ SimulationConfig parseConfig(const std::string& filename) {
     }
     return config;
 }
-// ===================================================================
-// FIN DE LA FUNCIÓN parseConfig
-// ===================================================================
-
 
 class Simulation;
 class Monster;
@@ -303,7 +296,6 @@ public:
     bool allLivingHeroesFinishedPath() { bool alive = false; for (auto& h : heroes) { if (h.is_alive) { alive = true; if (!h.finished_path) return false; } } return alive; }
 };
 
-// --- Lógica de Héroe (Sin cambios) ---
 void Hero::run(Simulation* sim) {
     while (is_alive && simulation_running) {
         std::unique_lock<std::mutex> lock(sim_mutex);
@@ -349,7 +341,6 @@ void Hero::run(Simulation* sim) {
     }
 }
 
-// --- Lógica de Monstruo (Sin cambios) ---
 void Monster::run(Simulation* sim) {
     while (is_alive && simulation_running) {
         std::unique_lock<std::mutex> lock(sim_mutex);
@@ -396,10 +387,6 @@ void Monster::run(Simulation* sim) {
     }
 }
 
-
-// ===================================================================
-// FUNCIÓN render_loop (CORREGIDA para mostrar monstruos)
-// ===================================================================
 void render_loop(Simulation* sim) {
     initscr(); noecho(); curs_set(0); start_color();
     init_pair(HERO_PAIR, COLOR_GREEN, COLOR_BLACK);
@@ -408,10 +395,10 @@ void render_loop(Simulation* sim) {
     init_pair(GAMEOVER_PAIR, COLOR_CYAN, COLOR_BLACK);
 
     int gw = sim->grid_size.x, gh = sim->grid_size.y;
-    int win_h = gh + 2; // Altura de ambas ventanas
+    int win_h = gh + 2;
     WINDOW* gamewin = newwin(win_h, gw + 2, 0, 0);
     WINDOW* uiwin = newwin(win_h, UI_W, 0, gw + 2);
-    timeout(33); // Actualización rápida del render
+    timeout(33);
 
     while (simulation_running) {
         int c = getch(); if (c == 'q') simulation_running = false;
@@ -420,46 +407,38 @@ void render_loop(Simulation* sim) {
         {
             std::lock_guard<std::mutex> lk(sim_mutex);
             
-            // Dibujar monstruos en el grid
             for (auto& m : sim->monsters) if (m.is_alive) { wattron(gamewin, COLOR_PAIR(MONSTER_PAIR)); mvwprintw(gamewin, m.current_coords.y + 1, m.current_coords.x + 1, "M"); wattroff(gamewin, COLOR_PAIR(MONSTER_PAIR)); }
             
-            // Dibujar héroes en el grid
             for (auto& h : sim->heroes) if (h.is_alive) { wattron(gamewin, COLOR_PAIR(HERO_PAIR)); mvwprintw(gamewin, h.current_coords.y + 1, h.current_coords.x + 1, "H%d", h.id); wattroff(gamewin, COLOR_PAIR(HERO_PAIR)); }
 
-            // --- INICIO DE LA CORRECCIÓN DE UI ---
-            int l = 1; // Contador de línea
+            int l = 1;
             wattron(uiwin, COLOR_PAIR(UI_PAIR)); mvwprintw(uiwin, l++, 1, "--- DOOM (Sincronizado) ---"); wattroff(uiwin, COLOR_PAIR(UI_PAIR)); l++;
 
-            // Bucle de Héroes
             for (auto& h : sim->heroes) {
-                if (l >= win_h - 3) break; // Evitar desbordamiento
+                if (l >= win_h - 3) break;
                 if (h.is_alive) mvwprintw(uiwin, l++, 1, "[H%d] HP:%d/%d", h.id, h.hp, h.hp_max);
                 else mvwprintw(uiwin, l++, 1, "[H%d] ¡MUERTO!", h.id);
                 mvwprintw(uiwin, l++, 3, "%s", h.last_action.c_str());
                 l++;
             }
 
-            // Bucle de Monstruos (¡NUEVO!)
             mvwprintw(uiwin, l++, 1, "--- Monstruos Activos ---");
             l++;
             for (auto& m : sim->monsters) {
-                if (l >= win_h - 3) { // Evitar desbordamiento
+                if (l >= win_h - 3) {
                     mvwprintw(uiwin, l++, 1, "...y %d más...", (int)sim->monsters.size() - m.id);
                     break;
                 }
-                // Solo muestra monstruos vivos Y activos
                 if (m.is_alive && m.is_active) { 
                     mvwprintw(uiwin, l++, 1, "[M%d] HP:%d/%d", m.id, m.hp, m.hp_max);
                     mvwprintw(uiwin, l++, 3, "%s", m.last_action.c_str());
                     l++;
                 }
             }
-            // --- FIN DE LA CORRECCIÓN DE UI ---
         }
         wnoutrefresh(gamewin); wnoutrefresh(uiwin); doupdate();
     }
 
-    // --- Lógica de fin de juego (Sin cambios) ---
     timeout(-1);
     bool winK = sim->allMonstersDead(), winP = sim->allLivingHeroesFinishedPath();
     wclear(uiwin); box(uiwin, 0, 0); wattron(uiwin, COLOR_PAIR(GAMEOVER_PAIR));
@@ -478,12 +457,7 @@ void render_loop(Simulation* sim) {
     while (getch() != 'q') {}
     endwin();
 }
-// ===================================================================
-// FIN DE LA FUNCIÓN render_loop
-// ===================================================================
 
-
-// --- Ticker (Sin cambios) ---
 void ticker_loop(Simulation*) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     while (simulation_running) {
@@ -494,26 +468,23 @@ void ticker_loop(Simulation*) {
     game_tick_cv.notify_all();
 }
 
-// --- Main (Sin cambios) ---
 int main(int argc, char* argv[]) {
     if (argc < 2) { std::cerr << "Uso: " << argv[0] << " config.txt\n"; return 1; }
     srand(time(NULL));
     SimulationConfig cfg = parseConfig(argv[1]);
-    Simulation sim(cfg); // 'sim' es un objeto
+    Simulation sim(cfg);
     std::vector<std::thread> t;
     
-    // Accedemos a los miembros de 'sim' (objeto) con '.'
     for (auto& h : sim.heroes) t.emplace_back(&Hero::run, &h, &sim);
-    for (auto& m : sim.monsters) t.emplace_back(&Monster::run, &m, &sim); // CORREGIDO: sim.monsters
+    for (auto& m : sim.monsters) t.emplace_back(&Monster::run, &m, &sim);
     
     t.emplace_back(render_loop, &sim);
     t.emplace_back(ticker_loop, &sim);
     
     for (auto& th : t) th.join();
 
-    // Accedemos a los métodos de 'sim' (objeto) con '.'
-    bool winK = sim.allMonstersDead(); // CORREGIDO
-    bool winP = sim.allLivingHeroesFinishedPath(); // CORREGIDO
+    bool winK = sim.allMonstersDead();
+    bool winP = sim.allLivingHeroesFinishedPath();
     
     std::cout << "--- Simulación Terminada ---\n";
     if (winK || winP) {
