@@ -192,7 +192,7 @@ struct SimulationConfig {
 };
 
 // ===================================================================
-// FUNCIÓN parseConfig (CORREGIDA)
+// FUNCIÓN parseConfig (CORREGIDA para multi-línea)
 // ===================================================================
 SimulationConfig parseConfig(const std::string& filename) {
     SimulationConfig config;
@@ -218,22 +218,17 @@ SimulationConfig parseConfig(const std::string& filename) {
             HeroConfig& h = config.heroes[id - 1]; h.id = id;
             std::string sub = key.substr(id_end + 1);
             
-            // --- INICIO DE LA CORRECCIÓN ---
             if (sub == "PATH") { 
                 int x, y; char c; 
-                // 1. Lee la primera línea de movimientos
                 while (ss >> c >> x >> c >> y >> c) h.path.push_back({x, y});
 
-                // 2. Mira la siguiente línea. Si empieza con '(' o ' ',
-                //    asume que es una continuación del path.
                 while (file.peek() == ' ' || file.peek() == '(') {
-                    if (!std::getline(file, line)) break; // Toma la línea de continuación
-                    std::stringstream ss_cont(line); // Crea un nuevo stringstream para esa línea
+                    if (!std::getline(file, line)) break; 
+                    std::stringstream ss_cont(line); 
                     while (ss_cont >> c >> x >> c >> y >> c) {
-                        h.path.push_back({x, y}); // Añade al mismo héroe
+                        h.path.push_back({x, y}); 
                     }
                 }
-            // --- FIN DE LA CORRECCIÓN ---
             
             } else if (sub == "START") ss >> h.start.x >> h.start.y;
             else { int v; ss >> v; if (sub == "HP") h.hp = v; else if (sub == "ATTACK_DAMAGE") h.attack_damage = v; else if (sub == "ATTACK_RANGE") h.attack_range = v; }
@@ -308,6 +303,7 @@ public:
     bool allLivingHeroesFinishedPath() { bool alive = false; for (auto& h : heroes) { if (h.is_alive) { alive = true; if (!h.finished_path) return false; } } return alive; }
 };
 
+// --- Lógica de Héroe (Sin cambios) ---
 void Hero::run(Simulation* sim) {
     while (is_alive && simulation_running) {
         std::unique_lock<std::mutex> lock(sim_mutex);
@@ -353,6 +349,7 @@ void Hero::run(Simulation* sim) {
     }
 }
 
+// --- Lógica de Monstruo (Sin cambios) ---
 void Monster::run(Simulation* sim) {
     while (is_alive && simulation_running) {
         std::unique_lock<std::mutex> lock(sim_mutex);
@@ -389,7 +386,7 @@ void Monster::run(Simulation* sim) {
                     else if (tgt->current_coords.x < current_coords.x) current_coords.x--;
                     else if (tgt->current_coords.y > current_coords.y) current_coords.y++;
                     else if (tgt->current_coords.y < current_coords.y) current_coords.y--;
-                    last_action = "Mov";
+                    last_action = "Mover a (" + std::to_string(current_coords.x) + "," + std::to_string(current_coords.y) + ")"; 
                 }
             }
         }
@@ -399,6 +396,10 @@ void Monster::run(Simulation* sim) {
     }
 }
 
+
+// ===================================================================
+// FUNCIÓN render_loop (CORREGIDA para mostrar monstruos)
+// ===================================================================
 void render_loop(Simulation* sim) {
     initscr(); noecho(); curs_set(0); start_color();
     init_pair(HERO_PAIR, COLOR_GREEN, COLOR_BLACK);
@@ -407,9 +408,10 @@ void render_loop(Simulation* sim) {
     init_pair(GAMEOVER_PAIR, COLOR_CYAN, COLOR_BLACK);
 
     int gw = sim->grid_size.x, gh = sim->grid_size.y;
-    WINDOW* gamewin = newwin(gh + 2, gw + 2, 0, 0);
-    WINDOW* uiwin = newwin(gh + 2, UI_W, 0, gw + 2);
-    timeout(33);
+    int win_h = gh + 2; // Altura de ambas ventanas
+    WINDOW* gamewin = newwin(win_h, gw + 2, 0, 0);
+    WINDOW* uiwin = newwin(win_h, UI_W, 0, gw + 2);
+    timeout(33); // Actualización rápida del render
 
     while (simulation_running) {
         int c = getch(); if (c == 'q') simulation_running = false;
@@ -417,21 +419,47 @@ void render_loop(Simulation* sim) {
         box(gamewin, 0, 0); box(uiwin, 0, 0);
         {
             std::lock_guard<std::mutex> lk(sim_mutex);
+            
+            // Dibujar monstruos en el grid
             for (auto& m : sim->monsters) if (m.is_alive) { wattron(gamewin, COLOR_PAIR(MONSTER_PAIR)); mvwprintw(gamewin, m.current_coords.y + 1, m.current_coords.x + 1, "M"); wattroff(gamewin, COLOR_PAIR(MONSTER_PAIR)); }
+            
+            // Dibujar héroes en el grid
             for (auto& h : sim->heroes) if (h.is_alive) { wattron(gamewin, COLOR_PAIR(HERO_PAIR)); mvwprintw(gamewin, h.current_coords.y + 1, h.current_coords.x + 1, "H%d", h.id); wattroff(gamewin, COLOR_PAIR(HERO_PAIR)); }
 
-            int l = 1;
-            wattron(uiwin, COLOR_PAIR(UI_PAIR)); mvwprintw(uiwin, l++, 1, "--- DOOM ---"); wattroff(uiwin, COLOR_PAIR(UI_PAIR)); l++;
+            // --- INICIO DE LA CORRECCIÓN DE UI ---
+            int l = 1; // Contador de línea
+            wattron(uiwin, COLOR_PAIR(UI_PAIR)); mvwprintw(uiwin, l++, 1, "--- DOOM (Sincronizado) ---"); wattroff(uiwin, COLOR_PAIR(UI_PAIR)); l++;
+
+            // Bucle de Héroes
             for (auto& h : sim->heroes) {
-                if (h.is_alive) mvwprintw(uiwin, l++, 1, "H%d HP:%d/%d", h.id, h.hp, h.hp_max);
-                else mvwprintw(uiwin, l++, 1, "H%d MUERTO", h.id);
+                if (l >= win_h - 3) break; // Evitar desbordamiento
+                if (h.is_alive) mvwprintw(uiwin, l++, 1, "[H%d] HP:%d/%d", h.id, h.hp, h.hp_max);
+                else mvwprintw(uiwin, l++, 1, "[H%d] ¡MUERTO!", h.id);
                 mvwprintw(uiwin, l++, 3, "%s", h.last_action.c_str());
                 l++;
             }
+
+            // Bucle de Monstruos (¡NUEVO!)
+            mvwprintw(uiwin, l++, 1, "--- Monstruos Activos ---");
+            l++;
+            for (auto& m : sim->monsters) {
+                if (l >= win_h - 3) { // Evitar desbordamiento
+                    mvwprintw(uiwin, l++, 1, "...y %d más...", (int)sim->monsters.size() - m.id);
+                    break;
+                }
+                // Solo muestra monstruos vivos Y activos
+                if (m.is_alive && m.is_active) { 
+                    mvwprintw(uiwin, l++, 1, "[M%d] HP:%d/%d", m.id, m.hp, m.hp_max);
+                    mvwprintw(uiwin, l++, 3, "%s", m.last_action.c_str());
+                    l++;
+                }
+            }
+            // --- FIN DE LA CORRECCIÓN DE UI ---
         }
         wnoutrefresh(gamewin); wnoutrefresh(uiwin); doupdate();
     }
 
+    // --- Lógica de fin de juego (Sin cambios) ---
     timeout(-1);
     bool winK = sim->allMonstersDead(), winP = sim->allLivingHeroesFinishedPath();
     wclear(uiwin); box(uiwin, 0, 0); wattron(uiwin, COLOR_PAIR(GAMEOVER_PAIR));
@@ -450,7 +478,12 @@ void render_loop(Simulation* sim) {
     while (getch() != 'q') {}
     endwin();
 }
+// ===================================================================
+// FIN DE LA FUNCIÓN render_loop
+// ===================================================================
 
+
+// --- Ticker (Sin cambios) ---
 void ticker_loop(Simulation*) {
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     while (simulation_running) {
@@ -461,20 +494,27 @@ void ticker_loop(Simulation*) {
     game_tick_cv.notify_all();
 }
 
+// --- Main (Sin cambios) ---
 int main(int argc, char* argv[]) {
     if (argc < 2) { std::cerr << "Uso: " << argv[0] << " config.txt\n"; return 1; }
     srand(time(NULL));
     SimulationConfig cfg = parseConfig(argv[1]);
-    Simulation sim(cfg);
+    Simulation sim(cfg); // 'sim' es un objeto
     std::vector<std::thread> t;
+    
+    // Accedemos a los miembros de 'sim' (objeto) con '.'
     for (auto& h : sim.heroes) t.emplace_back(&Hero::run, &h, &sim);
-    for (auto& m : sim.monsters) t.emplace_back(&Monster::run, &m, &sim);
+    for (auto& m : sim.monsters) t.emplace_back(&Monster::run, &m, &sim); // CORREGIDO: sim.monsters
+    
     t.emplace_back(render_loop, &sim);
     t.emplace_back(ticker_loop, &sim);
+    
     for (auto& th : t) th.join();
 
-    bool winK = sim.allMonstersDead();
-    bool winP = sim.allLivingHeroesFinishedPath();
+    // Accedemos a los métodos de 'sim' (objeto) con '.'
+    bool winK = sim.allMonstersDead(); // CORREGIDO
+    bool winP = sim.allLivingHeroesFinishedPath(); // CORREGIDO
+    
     std::cout << "--- Simulación Terminada ---\n";
     if (winK || winP) {
         if (winK) std::cout << "Victoria: derrotaron a los monstruos.\n";
