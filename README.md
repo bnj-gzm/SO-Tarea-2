@@ -191,11 +191,15 @@ struct SimulationConfig {
     std::vector<MonsterConfig> monsters;
 };
 
+// ===================================================================
+// FUNCIÓN parseConfig (CORREGIDA)
+// ===================================================================
 SimulationConfig parseConfig(const std::string& filename) {
     SimulationConfig config;
     std::ifstream file(filename);
     std::string line;
     int monster_count = 0;
+    
     while (std::getline(file, line)) {
         if (line.empty() || line[0] == '#') continue;
         std::stringstream ss(line);
@@ -213,9 +217,27 @@ SimulationConfig parseConfig(const std::string& filename) {
             if (id > (int)config.heroes.size()) config.heroes.resize(id);
             HeroConfig& h = config.heroes[id - 1]; h.id = id;
             std::string sub = key.substr(id_end + 1);
-            if (sub == "PATH") { int x, y; char c; while (ss >> c >> x >> c >> y >> c) h.path.push_back({x, y}); }
-            else if (sub == "START") ss >> h.start.x >> h.start.y;
+            
+            // --- INICIO DE LA CORRECCIÓN ---
+            if (sub == "PATH") { 
+                int x, y; char c; 
+                // 1. Lee la primera línea de movimientos
+                while (ss >> c >> x >> c >> y >> c) h.path.push_back({x, y});
+
+                // 2. Mira la siguiente línea. Si empieza con '(' o ' ',
+                //    asume que es una continuación del path.
+                while (file.peek() == ' ' || file.peek() == '(') {
+                    if (!std::getline(file, line)) break; // Toma la línea de continuación
+                    std::stringstream ss_cont(line); // Crea un nuevo stringstream para esa línea
+                    while (ss_cont >> c >> x >> c >> y >> c) {
+                        h.path.push_back({x, y}); // Añade al mismo héroe
+                    }
+                }
+            // --- FIN DE LA CORRECCIÓN ---
+            
+            } else if (sub == "START") ss >> h.start.x >> h.start.y;
             else { int v; ss >> v; if (sub == "HP") h.hp = v; else if (sub == "ATTACK_DAMAGE") h.attack_damage = v; else if (sub == "ATTACK_RANGE") h.attack_range = v; }
+        
         } else if (key.rfind("MONSTER_", 0) == 0) {
             size_t id_start = 8, id_end = key.find('_', id_start);
             if (id_end == std::string::npos) continue;
@@ -229,6 +251,10 @@ SimulationConfig parseConfig(const std::string& filename) {
     }
     return config;
 }
+// ===================================================================
+// FIN DE LA FUNCIÓN parseConfig
+// ===================================================================
+
 
 class Simulation;
 class Monster;
@@ -457,7 +483,6 @@ int main(int argc, char* argv[]) {
         std::cout << "Derrota: los héroes fueron derrotados.\n";
     }
 }
-
 
 ```
 
