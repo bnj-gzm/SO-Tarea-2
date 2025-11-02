@@ -412,7 +412,7 @@ void render_loop(Simulation* sim) {
             for (auto& h : sim->heroes) if (h.is_alive) { wattron(gamewin, COLOR_PAIR(HERO_PAIR)); mvwprintw(gamewin, h.current_coords.y + 1, h.current_coords.x + 1, "H%d", h.id); wattroff(gamewin, COLOR_PAIR(HERO_PAIR)); }
 
             int l = 1;
-            wattron(uiwin, COLOR_PAIR(UI_PAIR)); mvwprintw(uiwin, l++, 1, "--- DOOM (Sincronizado) ---"); wattroff(uiwin, COLOR_PAIR(UI_PAIR)); l++;
+            wattron(uiwin, COLOR_PAIR(UI_PAIR)); mvwprintw(uiwin, l++, 1, "--- DOOM---"); wattroff(uiwin, COLOR_PAIR(UI_PAIR)); l++;
 
             for (auto& h : sim->heroes) {
                 if (l >= win_h - 3) break;
